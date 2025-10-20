@@ -16,25 +16,35 @@ private enum CarViewConstants {
     static let capsuleWidth: CGFloat = 16
     static let capsuleSpacing: CGFloat = 10
     static let capsuleCornerRadius: CGFloat = 10
+    static let capsuleAboveWheelInset: CGFloat = 16
     
-    // Индексы капсул, которые нужно поднять над колесами
     static let capsulesAboveWheels: [Int] = [2, 3, 4, 9, 10, 11]
 
     static let wheelSize: CGFloat = 60
-    static let wheelCornerRadius: CGFloat = 100
+    static let wheelCornerRadius: CGFloat = 20
     static let innerWheelCornerRadius: CGFloat = 10
     static let innerWheelScale: CGFloat = 0.6
-    static let capsuleWheelWrapDropOffset: CGFloat = wheelSize / 2
-    static let capsuleWheelWrapTolerance: CGFloat = 4
     static let wheelHorizontalInset: CGFloat = 56
 
     static let waveHeight: CGFloat = 14
     static let waveDuration: CFTimeInterval = 0.5
     static let waveDelayStep: CFTimeInterval = 0.15
     static let waveKeyTimes: [NSNumber] = [0, 0.8, 1]
+    static let waveTimingFunctions: [CAMediaTimingFunction] = [
+        CAMediaTimingFunction(name: .easeInEaseOut),
+        CAMediaTimingFunction(name: .easeInEaseOut)
+    ]
 
     static let wheelRotationDuration: CFTimeInterval = 2
     static let wheelRotationTurns: CGFloat = 2 * .pi
+
+    static var capsuleAboveWheelOffset: CGFloat {
+        wheelSize - capsuleAboveWheelInset
+    }
+
+    static var waveAnimationValues: [CGFloat] {
+        [0, -waveHeight, 0]
+    }
 }
 
 final class CarView: UIView {
@@ -72,7 +82,7 @@ final class CarView: UIView {
 
         container.addSubview(capsule)
 
-        let bottomConstant: CGFloat = CarViewConstants.capsulesAboveWheels.contains(index) ? -CarViewConstants.wheelSize : 0
+        let bottomConstant: CGFloat = CarViewConstants.capsulesAboveWheels.contains(index) ? -CarViewConstants.capsuleAboveWheelOffset : 0
         let bottomConstraint = capsule.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: bottomConstant)
 
         NSLayoutConstraint.activate([
@@ -170,21 +180,18 @@ final class CarView: UIView {
             guard let index = capsuleViews.firstIndex(where: { $0 === capsule }) else { continue }
             let key = "\(CarView.waveAnimationKeyPrefix)\(index)"
             capsule.layer.removeAnimation(forKey: key)
-            let animation = makeWaveAnimation(beginTime: baseTime + CFTimeInterval(offset) * 0.15)
+            let animation = makeWaveAnimation(beginTime: baseTime + CFTimeInterval(offset) * CarViewConstants.waveDelayStep)
             capsule.layer.add(animation, forKey: key)
         }
     }
 
     private func makeWaveAnimation(beginTime: CFTimeInterval) -> CAKeyframeAnimation {
         let animation = CAKeyframeAnimation(keyPath: "transform.translation.y")
-        animation.values = [0, -14, 0]
-        animation.keyTimes = [0, 0.8, 1]
-        animation.duration = 0.5
+        animation.values = CarViewConstants.waveAnimationValues
+        animation.keyTimes = CarViewConstants.waveKeyTimes
+        animation.duration = CarViewConstants.waveDuration
         animation.beginTime = beginTime
-        animation.timingFunctions = [
-            CAMediaTimingFunction(name: .easeInEaseOut),
-            CAMediaTimingFunction(name: .easeInEaseOut)
-        ]
+        animation.timingFunctions = CarViewConstants.waveTimingFunctions
         animation.isAdditive = true
         return animation
     }
@@ -210,7 +217,7 @@ final class CarView: UIView {
             
             let targetConstant: CGFloat
             if CarViewConstants.capsulesAboveWheels.contains(index) {
-                targetConstant = -CarViewConstants.wheelSize + 16
+                targetConstant = -CarViewConstants.capsuleAboveWheelOffset
             } else {
                 targetConstant = 0
             }
@@ -234,7 +241,7 @@ private final class WheelView: UIView {
     }
 
     required init?(coder: NSCoder) {
-        self.wheelSize = 80
+        self.wheelSize = CarViewConstants.wheelSize
         super.init(coder: coder)
         configure()
     }
@@ -242,12 +249,12 @@ private final class WheelView: UIView {
     private func configure() {
         translatesAutoresizingMaskIntoConstraints = false
         backgroundColor = UIColor.systemBlue
-        layer.cornerRadius = 20
+        layer.cornerRadius = CarViewConstants.wheelCornerRadius
         clipsToBounds = true
 
         innerWheel.translatesAutoresizingMaskIntoConstraints = false
         innerWheel.backgroundColor = .white
-        innerWheel.layer.cornerRadius = 10
+        innerWheel.layer.cornerRadius = CarViewConstants.innerWheelCornerRadius
         innerWheel.clipsToBounds = true
 
         addSubview(innerWheel)
@@ -258,7 +265,7 @@ private final class WheelView: UIView {
 
             innerWheel.centerXAnchor.constraint(equalTo: centerXAnchor),
             innerWheel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            innerWheel.widthAnchor.constraint(equalToConstant: wheelSize * 0.6),
+            innerWheel.widthAnchor.constraint(equalToConstant: wheelSize * CarViewConstants.innerWheelScale),
             innerWheel.heightAnchor.constraint(equalTo: innerWheel.widthAnchor)
         ])
     }
